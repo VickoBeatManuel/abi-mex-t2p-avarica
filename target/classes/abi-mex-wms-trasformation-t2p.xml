@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:mulexml="http://www.mulesoft.org/schema/mule/xml" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:schedulers="http://www.mulesoft.org/schema/mule/schedulers"
+	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:ws="http://www.mulesoft.org/schema/mule/ws" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/schedulers http://www.mulesoft.org/schema/mule/schedulers/current/mule-schedulers.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/current/mule-ws.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/current/mule-xml.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8082" doc:name="HTTP Listener Configuration"/>
+    <ws:consumer-config name="Web_Service_Consumer" wsdlLocation="ZWMSTRANS_CREATEOT.wsdl" service="ZWS_WMS_CREATEOT" port="ZWS_WMS_CREATEOT_BINDING" serviceAddress="http://localhost:8080/sap/bc/srt/rfc/sap/zws_wms_createot/400/zws_wms_createot/zws_wms_createot_binding" connectorConfig="HTTP_Request_Configuration" doc:name="Web Service Consumer"/>
+    <http:request-config name="HTTP_Request_Configuration" host="10.99.3.44" port="8000" basePath="http://10.99.3.44:8000/sap/bc/srt/rfc/sap/zws_wms_createot/400/zws_wms_createot/zws_wms_createot_binding" doc:name="HTTP Request Configuration">
+        <http:basic-authentication username="H0017140" password="MikeekimikE11."/>
+    </http:request-config>
+    <db:generic-config name="Generic_Database_Configuration" url="jdbc:sqlserver://${roadNetIP}:${roadNetPort};databaseName=${roadNetDataBase};user=${roadNetUser};password=${roadNetPassword}" driverClassName="com.microsoft.sqlserver.jdbc.SQLServerDriver" doc:name="Generic Database Configuration"/>
+    <ws:consumer-config name="Web_Service_Consumer1" wsdlLocation="ZWMSTRANS_STATUS_DATA.wsdl" service="ZWS_WMS_STATUS_DATA" port="ZWS_WMS_STATUS_DATA_BINDING" serviceAddress="http://localhost:8090/sap/bc/srt/rfc/sap/zws_wms_status_data/400/zws_wms_status_data/zws_wms_status_data_binding" connectorConfig="HTTP_Request_Configuration" doc:name="Web Service Consumer"/>
+    <http:request-config name="HTTP_Request_Configuration1" host="${wms-host}" port="80" basePath="${wms-basepath}" doc:name="HTTP Request Configuration"/>
+    <flow name="abi-mex-wms-trasformation-t2pFlow">
+    
+        <poll doc:name="Poll">
+            <fixed-frequency-scheduler frequency="50000" startDelay="1000"/>
+            <dw:transform-message doc:name="Transform Message">
+                <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	"UserName": "integracao.hbsis",
+  "Password": "1ntHBS1S",
+  "Equipment": "integracao.hbsis"
+}]]></dw:set-payload>
+            </dw:transform-message>
+            
+        </poll>
+        <http:request config-ref="HTTP_Request_Configuration1" path="/login" method="POST" doc:name="HTTP"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+}]]></dw:set-payload>
+            <dw:set-session-variable variableName="Authorization"><![CDATA[%dw 1.0
+%output application/java
+---
+payload.data.token]]></dw:set-session-variable>
+        </dw:transform-message>
+        <logger message="#[sessionVars.Authorization]" level="INFO" doc:name="Logger"/>
+        <flow-ref name="abi-mex-wms-trasformation-t2pSub_Flow" doc:name="Flow Reference"/>
+    </flow>
+    <sub-flow name="abi-mex-wms-trasformation-t2pSub_Flow">
+        <logger message="Inicia proceso Picking Mexico" level="INFO" doc:name="Logger"/>
+        <set-variable variableName="pickingCDsMexico" value="${pickingCDsMexico}" doc:name="pickingCDsMexico"/>
+        <logger message="Config.pickingCDsMexico: #[flowVars.pickingCDsMexico]" level="INFO" doc:name="Logger"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+%var arrayCenters = flowVars.pickingCDsMexico splitBy ","
+---
+arrayCenters]]></dw:set-payload>
+        </dw:transform-message>
+        <set-variable variableName="arrayCenters" value="#[payload]" doc:name="arrayCenters"/>
+        <foreach collection="flowVars.arrayCenters" doc:name="For Each">
+            <flow-ref name="abi-mex-wms-trasformation-Roadnet" doc:name="RoadNet"/>
+        </foreach>
+        <set-payload value="#[payload]" doc:name="Set Payload"/>
+        <logger message="Finaliza proceso Picking Mexico" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+    <sub-flow name="abi-mex-wms-trasformation-Roadnet">
+        <logger message="Procesando Picking Centro: #[payload]" level="INFO" doc:name="Logger"/>
+        <db:select config-ref="Generic_Database_Configuration" doc:name="Database">
+            <db:parameterized-query><![CDATA[select  rs_stop.LOCATION_REGION_ID as campo_uen, rs_route.ROUTE_ID as id_ruta, rs_order.ORDER_NUMBER as no_entrega, rs_stop.SEQUENCE_NUMBER 
+from UPSLT.TSDBA.RS_SESSION rs_session
+inner join UPSLT.TSDBA.RS_ROUTE rs_route on rs_route.RN_SESSION_PKEY = rs_session.PKEY
+inner join UPSLT.TSDBA.RS_STOP rs_stop on rs_stop.ROUTE_PKEY = rs_route.PKEY
+inner join UPSLT.TSDBA.RS_ORDER rs_order on rs_order.STOP_PKEY = rs_stop.PKEY
+where rs_session.SESSION_DATE between '2019-12-23' and '2019-12-23'
+and rs_order.LOC_REG_ID_PREF_ORIGIN = #[payload]]]></db:parameterized-query>
+        </db:select>
+        <set-variable variableName="transportCenters" value="#[payload]" doc:name="transportCenters"/>
+        <logger message="Salida Roadnet: #[payload]" level="INFO" doc:name="Logger"/>
+        <choice doc:name="Choice">
+            <when expression="#[flowVars.transportCenters.size() &gt; 0]">
+                <json:object-to-json-transformer doc:name="Object to JSON"/>
+                <dw:transform-message doc:name="Transform Message">
+                    <dw:set-variable variableName="IV_TEXT"><![CDATA[%dw 1.0
+%output application/java
+---
+
+payload map (payload01 , indexOfPayload01) -> (payload01.campo_uen ++ "|" ++ payload01.id_ruta ++ "|"	++ payload01.no_entrega ++ "|"	++ payload01.SEQUENCE_NUMBER)
+]]></dw:set-variable>
+                </dw:transform-message>
+                <logger message="#[flowVars.IV_TEXT]" level="INFO" doc:name="Logger"/>
+                <flow-ref name="abi-mex-wms-trasformation-SAP-addTransports" doc:name="SAP addTransports"/>
+                <flow-ref name="abi-mex-wms-trasformation-SAP-retrieveTransports" doc:name="SAP retrieveTransports"/>
+            </when>
+            <otherwise>
+                <logger message="Sin rutas" level="INFO" doc:name="Logger"/>
+            </otherwise>
+        </choice>
+    </sub-flow>
+    <sub-flow name="abi-mex-wms-trasformation-SAP-addTransports">
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/xml
+%namespace urn urn:sap-com:document:sap:rfc:functions
+---
+{
+	urn#ZPAIMF_WMSTRANS_CREATEOT: {
+		IV_TEXT:flowVars.IV_TEXT reduce ((val,acc="") -> acc ++ val ++ "\n")
+	}
+}]]></dw:set-payload>
+            <dw:set-property propertyName="soap.Header"><![CDATA[%dw 1.0
+%output application/xml
+---
+{
+	header:""
+}]]></dw:set-property>
+        </dw:transform-message>
+        <message-properties-transformer doc:name="Message Properties">
+            <delete-message-property key="MULE_*"/>
+        </message-properties-transformer>
+        <ws:consumer config-ref="Web_Service_Consumer" operation="ZPAIMF_WMSTRANS_CREATEOT" doc:name="Web Service Consumers"/>
+        <logger message="Alta Rutas SAP: #[message.payloadAs(String)]" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+    <sub-flow name="abi-mex-wms-trasformation-SAP-retrieveTransports">
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-variable variableName="arrayUniqueCenters"><![CDATA[%dw 1.0
+%output application/java
+---
+
+	flowVars.transportCenters distinctBy (value) -> {"unique" : value.campo_uen}
+		
+]]></dw:set-variable>
+        </dw:transform-message>
+        <set-session-variable variableName="transportsSAP" value="" doc:name="transportsSAP Session Variable"/>
+		<until-successful maxRetries="1000" millisBetweenRetries="5000" synchronous="true" doc:name="Until Successful">
+			<flow-ref name="abi-mex-wms-trasformation-while" doc:name="while"/>
+		</until-successful>
+    </sub-flow>
+    <sub-flow name="abi-mex-wms-trasformation-while">
+        <logger message="while" level="INFO" doc:name="Logger"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/xml
+%namespace urn urn:sap-com:document:sap:rfc:functions
+---
+{
+	urn#ZPAIMF_WMSTRANS_STATUS_DATA : {
+	IV_TPLST:flowVars.arrayUniqueCenters[flowVars.counter-1].campo_uen
+	}
+}]]></dw:set-payload>
+        </dw:transform-message>
+        <message-properties-transformer doc:name="Copy_of_Message Properties">
+            <delete-message-property key="MULE_*"/>
+        </message-properties-transformer>
+        <ws:consumer config-ref="Web_Service_Consumer1" operation="ZPAIMF_WMSTRANS_STATUS_DATA" doc:name="Web Service Consumer"/>
+        <dw:transform-message doc:name="Transform Message" metadata:id="d4d72013-60b1-451f-b530-393d59a06ac2">
+            <dw:input-payload doc:sample="sample_data\ZPAIMF_WMSTRANS_STATUS_DATAResponse.xml"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+%namespace ns0 urn:sap-com:document:sap:rfc:functions
+---
+{
+	ET_SHIPMENTS_OUT: {
+		item: {
+			TKNUM: payload.ns0#ZPAIMF_WMSTRANS_STATUS_DATAResponse.ET_SHIPMENTS_OUT.item.TKNUM,
+			VBELN: payload.ns0#ZPAIMF_WMSTRANS_STATUS_DATAResponse.ET_SHIPMENTS_OUT.item.VBELN,
+			WERKS: payload.ns0#ZPAIMF_WMSTRANS_STATUS_DATAResponse.ET_SHIPMENTS_OUT.item.WERKS,
+			ROUTE_MAP: payload.ns0#ZPAIMF_WMSTRANS_STATUS_DATAResponse.ET_SHIPMENTS_OUT.item.ROUTE_MAP,
+			LFDAT: payload.ns0#ZPAIMF_WMSTRANS_STATUS_DATAResponse.ET_SHIPMENTS_OUT.item.LFDAT,
+			"_-BEV1_-RPMOWA": payload.ns0#ZPAIMF_WMSTRANS_STATUS_DATAResponse.ET_SHIPMENTS_OUT.item."_-BEV1_-RPMOWA",
+			TPNUM: payload.ns0#ZPAIMF_WMSTRANS_STATUS_DATAResponse.ET_SHIPMENTS_OUT.item.TPNUM,
+			MTNR: payload.ns0#ZPAIMF_WMSTRANS_STATUS_DATAResponse.ET_SHIPMENTS_OUT.item.MATNR,
+			LFMIG: payload.ns0#ZPAIMF_WMSTRANS_STATUS_DATAResponse.ET_SHIPMENTS_OUT.item.LFMIG as :string,
+			TDLNR: payload.ns0#ZPAIMF_WMSTRANS_STATUS_DATAResponse.ET_SHIPMENTS_OUT.item.TDLNR
+		}
+	},
+	TABLA: {
+		item: {
+			TRAS_PLAN-PT: payload.ns0#ZPAIMF_WMSTRANS_STATUS_DATAResponse.ET_TABLA.item.TRANS_PLAN_PT,
+			SHIMMENT_ROUTE: payload.ns0#ZPAIMF_WMSTRANS_STATUS_DATAResponse.ET_TABLA.item.SHIPMENT_ROUTE,
+			WERKS: payload.ns0#ZPAIMF_WMSTRANS_STATUS_DATAResponse.ET_TABLA.item.WERKS
+		},
+		EV_ISFINISHED: payload.ns0#ZPAIMF_WMSTRANS_STATUS_DATAResponse.EV_IS_FINISHED,
+		EV_MESSAGE: payload.ns0#ZPAIMF_WMSTRANS_STATUS_DATAResponse.EV_MENSAJE
+	}
+}]]></dw:set-payload>
+            <dw:set-variable variableName="outputSAPStatusData"><![CDATA[%dw 1.0
+%output application/java
+%namespace ns0 urn:sap-com:document:sap:rfc:functions
+---
+{
+	items : payload.ns0#ZPAIMF_WMSTRANS_STATUS_DATAResponse.ET_TABLA.*item map (items, index) -> {
+		trans_plan_pt : items.TRANS_PLAN_PT,
+		shipment_route : items.SHIPMENT_ROUTE,
+		delivery : items.DELIVERY,
+		itenerary : items.ITENERARY,				
+		status_procsmnto : items.STATUS_PROCSMNTO,
+		tknum : items.TKNUM,
+		werks : items.WERKS,				
+		name1 : items.NAME1,
+		mens : items.MENS		
+	},
+	is_finished : payload.ns0#ZPAIMF_WMSTRANS_STATUS_DATAResponse.EV_IS_FINISHED
+}]]></dw:set-variable>
+        </dw:transform-message>
+        <scatter-gather doc:name="Scatter-Gather">
+            <processor-chain>
+                <dw:transform-message doc:name="Transform Message">
+                    <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+	SUCCES : flowVars.outputSAPStatusData.items filter (val, index) -> (val.mens == null )
+	
+}]]></dw:set-payload>
+                </dw:transform-message>
+                <logger message="mensaje exi::::::::#[message.payload]" level="INFO" doc:name="Logger"/>
+            </processor-chain>
+            <processor-chain>
+                <dw:transform-message doc:name="Transform Message">
+                    <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+WRONG : flowVars.outputSAPStatusData.items filter (val, index) -> (val.mens != null)	
+
+}]]></dw:set-payload>
+                </dw:transform-message>
+                <logger message="mensaje erroneo::::::::#[message.payload]" level="INFO" doc:name="Logger"/>
+            </processor-chain>
+        </scatter-gather>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+        <logger message="#[flowVars.outputSAPStatusData]" level="INFO" doc:name="Logger"/>
+        <choice doc:name="Choice">
+            <when expression="#[flowVars.outputSAPStatusData.is_finished == &quot;X&quot;]">
+                <logger message="Filtered: #[payload]" level="INFO" doc:name="Logger"/>
+            </when>
+            <otherwise>
+                <logger message="Not finished SAP proccessing" level="INFO" doc:name="Logger"/>
+                <scripting:component doc:name="Groovy">
+                    <scripting:script engine="Groovy"><![CDATA[throw new IllegalArgumentException("Not yet.");]]></scripting:script>
+                </scripting:component>
+            </otherwise>
+        </choice>
+    </sub-flow>
+    <sub-flow name="abi-mex-wms-trasformation-WMS-uploadTransports">
+        <logger level="INFO" doc:name="Logger"/>
+    </sub-flow>
+
+
+</mule>

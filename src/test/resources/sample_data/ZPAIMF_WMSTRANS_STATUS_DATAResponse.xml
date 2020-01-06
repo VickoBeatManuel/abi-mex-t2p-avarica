@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<ns0:ZPAIMF_WMSTRANS_STATUS_DATAResponse xmlns:ns0="urn:sap-com:document:sap:rfc:functions">
+  <ET_SHIPMENTS_OUT>
+    <item/>
+  </ET_SHIPMENTS_OUT>
+  <ET_TABLA>
+    <item/>
+  </ET_TABLA>
+  <EV_IS_FINISHED>????</EV_IS_FINISHED>
+  <EV_MENSAJE>????</EV_MENSAJE>
+</ns0:ZPAIMF_WMSTRANS_STATUS_DATAResponse>

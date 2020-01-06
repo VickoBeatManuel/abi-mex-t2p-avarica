@@ -1,0 +1,11 @@
+{
+    "inputMessageMetadata": {
+        "messagePayload": {
+            "connectorName": "#_custom_mule_metadata_type_#",
+            "typeId": "roadreq"
+        }
+    },
+    "outputMessageMetadata": {},
+    "id": "e4590242-3665-4d54-afa1-d9a8acba96ec",
+    "version": "5.2.0.0"
+}

@@ -1,0 +1,11 @@
+{
+    "inputMessageMetadata": {},
+    "outputMessageMetadata": {
+        "messagePayload": {
+            "connectorName": "#_custom_mule_metadata_type_#",
+            "typeId": "PREPAREREQHBSIS"
+        }
+    },
+    "id": "d4d72013-60b1-451f-b530-393d59a06ac2",
+    "version": "5.2.0.0"
+}
